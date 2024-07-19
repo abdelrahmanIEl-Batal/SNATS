@@ -1,5 +1,13 @@
 package model
 
-import fs2.io.net.Socket
+sealed trait ClientId extends Any {
 
-case class ClientIdentifier[F[_]](socket: Socket[F])
+  def value: String
+}
+
+object ClientId {
+
+  private case class DefaultClientId(value: String) extends AnyVal with ClientId
+
+  def fromString(value: String): ClientId = DefaultClientId(value)
+}
