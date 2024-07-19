@@ -25,12 +25,12 @@ object NatsClient extends IOApp {
     connect(SocketAddress(host"localhost", port"4222")).flatMap { socket =>
       Stream.exec(Console[F].println("connected!")) ++
         Stream.eval(ClientSocket[F](socket = socket)).flatMap { clientSocket =>
-          readMessage(clientSocket).concurrently(sendMessage(clientSocket))
+          sendMessage(clientSocket).concurrently(readMessage(clientSocket))
         }
     }
 
-  private def readMessage[F[_]: Console](clientSocket: ClientSocket[F]): Stream[F, Unit] =
-    clientSocket.read.evalMap(Console[F].println)
+  private def readMessage[F[_]](clientSocket: ClientSocket[F]): Stream[F, String] =
+    clientSocket.read
 
   private def sendMessage[F[_]: Console](clientSocket: ClientSocket[F]): Stream[F, Unit] =
     Stream.repeatEval(Console[F].readLine)
