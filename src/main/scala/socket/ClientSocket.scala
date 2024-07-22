@@ -20,7 +20,7 @@ object ClientSocket {
     override def read: Stream[F, String] = {
 
       val readInput: Stream[F, String] = socket.reads.through(text.utf8.decode).through(text.lines)
-        .foreach(response => Console[F].println(s"Response: $response"))
+        .foreach(response => Console[F].println(s"$response"))
 
       val writeOutput =
         Stream.fromQueueUnterminated(queue).interleave(Stream.constant("\n")).through(text.utf8.encode).through(socket.writes)
