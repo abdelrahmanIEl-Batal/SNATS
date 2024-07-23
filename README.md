@@ -1,6 +1,7 @@
 # SNATS: Scala NATS Message Broker
 
-SNATS is a lightweight, message broker implemented in Scala. Inspired from https://codingchallenges.fyi/challenges/challenge-nats/.
+SNATS is a lightweight, message broker implemented in Scala. 
+Inspired from https://codingchallenges.fyi/challenges/challenge-nats/.
 
 ## Features
 
