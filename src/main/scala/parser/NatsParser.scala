@@ -16,23 +16,29 @@ object NatsParser {
       extractCommand(components(position)) match {
         case Left(error) => error.asLeft
         case Right(command) => command match {
-            case Command.Pub     => extractPubSubject(components = components, position = position + 1)
-            case Command.Sub     => extractSubSubject(components = components, position = position + 1)
-            case Command.Ping    => NatsMessage.PingMessage.asRight
+            case Command.Pub         => extractPubSubject(components = components, position = position + 1)
+            case Command.Sub         => extractSubSubject(components = components, position = position + 1)
+            case Command.Unsubscribe => extractUnsubscribeSubject(components = components, position = position + 1)
+            case Command.Ping        => NatsMessage.PingMessage.asRight
           }
       }
     else new IllegalArgumentException("invalid message").asLeft
 
   private def extractCommand(command: String): Either[Throwable, Command] =
     command match {
-      case CommandType.SUB     => Command.Sub.asRight
-      case CommandType.PUB     => Command.Pub.asRight
-      case CommandType.PING    => Command.Ping.asRight
-      case otherwise           => new IllegalArgumentException(s"invalid command encountered, value: $otherwise").asLeft
+      case CommandType.SUB         => Command.Sub.asRight
+      case CommandType.PUB         => Command.Pub.asRight
+      case CommandType.PING        => Command.Ping.asRight
+      case CommandType.UNSUBSCRIBE => Command.Unsubscribe.asRight
+      case otherwise               => new IllegalArgumentException(s"invalid command encountered, value: $otherwise").asLeft
     }
 
   private def extractSubSubject(position: Int, components: Vector[String]): Either[Throwable, NatsMessage] =
     if (position < components.length) NatsMessage.SubMessage(Subject(components(position))).asRight
+    else new IllegalArgumentException("expected subject, found nothing").asLeft
+
+  private def extractUnsubscribeSubject(position: Int, components: Vector[String]): Either[Throwable, NatsMessage] =
+    if (position < components.length) NatsMessage.UnsubscribeMessage(Subject(components(position))).asRight
     else new IllegalArgumentException("expected subject, found nothing").asLeft
 
   private def extractPubSubject(position: Int, components: Vector[String]): Either[Throwable, NatsMessage] =

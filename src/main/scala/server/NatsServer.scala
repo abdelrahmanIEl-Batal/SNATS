@@ -57,6 +57,8 @@ object NatsServer extends IOApp {
             command match {
               case NatsMessage.PubMessage(subject, payload) => broadcastMessage(address, clientsRef, subject, payload, topicRef)
               case NatsMessage.SubMessage(subject) => handleSubscribe(subject = subject, clientId = address, topicRef = topicRef, client)
+              case NatsMessage.UnsubscribeMessage(subject) =>
+                handleUnsubscribe(subject = subject, clientId = address, topicRef = topicRef, socket = client)
               case NatsMessage.PingMessage =>
                 responseStream("PONG").through(text.utf8.encode).through(client.writes).compile.drain
             }
@@ -78,6 +80,19 @@ object NatsServer extends IOApp {
         case None             => mp + (subject -> Vector(clientId))
       }
     } >> responseStream(s"subscribed to topic: ${subject.value}").through(text.utf8.encode).through(socket.writes).compile.drain
+
+  private def handleUnsubscribe[F[_]: Concurrent](
+    subject: Subject,
+    clientId: ClientId,
+    topicRef: Ref[F, Map[Subject, Vector[ClientId]]],
+    socket: Socket[F]
+  ): F[Unit] =
+    topicRef.update { mp =>
+      mp.find(_._1.value == subject.value) match {
+        case Some(subjectMap) => mp.updated(subject, subjectMap._2.filter(_ != clientId))
+        case None             => mp
+      }
+    } >> responseStream(s"unsubscribed from topic: ${subject.value}").through(text.utf8.encode).through(socket.writes).compile.drain
 
   private def parseMessage(message: String): Either[Throwable, NatsMessage] =
     NatsParser.parseMessage(message) match {

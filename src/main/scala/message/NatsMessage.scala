@@ -17,6 +17,11 @@ object NatsMessage {
     override val command: Command = Command.Sub
   }
 
+  case class UnsubscribeMessage(subject: Subject) extends NatsMessage {
+
+    override val command: Command = Command.Unsubscribe
+  }
+
   case object PingMessage extends NatsMessage {
 
     override val command: Command = Command.Ping

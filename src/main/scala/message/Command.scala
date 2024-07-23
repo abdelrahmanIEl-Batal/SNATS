@@ -13,6 +13,8 @@ object Command {
 
     final val SUB: String = "SUB"
 
+    final val UNSUBSCRIBE: String = "UNSUB"
+
     final val PING: String = "PING"
   }
 
@@ -24,6 +26,11 @@ object Command {
   case object Sub extends Command {
 
     override val commandType: String = CommandType.SUB
+  }
+
+  case object Unsubscribe extends Command {
+
+    override val commandType: String = CommandType.UNSUBSCRIBE
   }
 
   case object Ping extends Command {
