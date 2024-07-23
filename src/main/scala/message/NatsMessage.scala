@@ -17,11 +17,6 @@ object NatsMessage {
     override val command: Command = Command.Sub
   }
 
-  case object ConnectMessage extends NatsMessage {
-
-    override val command: Command = Command.Connect
-  }
-
   case object PingMessage extends NatsMessage {
 
     override val command: Command = Command.Ping

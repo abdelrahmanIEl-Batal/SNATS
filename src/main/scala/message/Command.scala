@@ -13,8 +13,6 @@ object Command {
 
     final val SUB: String = "SUB"
 
-    final val CONNECT: String = "CONNECT"
-
     final val PING: String = "PING"
   }
 
@@ -26,11 +24,6 @@ object Command {
   case object Sub extends Command {
 
     override val commandType: String = CommandType.SUB
-  }
-
-  case object Connect extends Command {
-
-    override val commandType: String = CommandType.CONNECT
   }
 
   case object Ping extends Command {

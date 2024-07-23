@@ -7,7 +7,7 @@ import com.comcast.ip4s.Port
 import fs2.io.net.{Network, Socket}
 import fs2.text
 import fs2.Stream
-import message.{NatsMessage, Subject}
+import message.{NatsMessage, Payload, Subject}
 import model.ClientId
 import parser.NatsParser
 
@@ -48,23 +48,23 @@ object NatsServer extends IOApp {
     client.reads
       .through(text.utf8.decode)
       .through(text.lines)
-      .interleave(Stream.constant("\n"))
       .evalTap(Console[F].println)
       .evalTap { message =>
-        parseMessage(message) match {
+        parseMessage(message.trim) match {
           case Left(exception) =>
-            println(s"lol: ${exception.getMessage}")
-            Stream.emit(exception.getMessage).through(text.utf8.encode).through(client.writes).compile.drain
+            responseStream(exception.getMessage).through(text.utf8.encode).through(client.writes).compile.drain
           case Right(command) =>
             command match {
-              case NatsMessage.PubMessage(_, _) => broadcastMessage(message, address, clientsRef)
+              case NatsMessage.PubMessage(subject, payload) => broadcastMessage(address, clientsRef, subject, payload, topicRef)
               case NatsMessage.SubMessage(subject) => handleSubscribe(subject = subject, clientId = address, topicRef = topicRef, client)
-              case NatsMessage.ConnectMessage      => ???
-              case NatsMessage.PingMessage         => ???
+              case NatsMessage.PingMessage =>
+                responseStream("PONG").through(text.utf8.encode).through(client.writes).compile.drain
             }
-          // broadcastMessage(message, address, clientsRef)
         }
       }
+
+  private def responseStream[F[_]](message: String): Stream[F, String] =
+    Stream.emit(message).interleave(Stream.constant("\n"))
 
   private def handleSubscribe[F[_]: Concurrent](
     subject: Subject,
@@ -77,7 +77,7 @@ object NatsServer extends IOApp {
         case Some(subjectMap) => mp.updated(subject, subjectMap._2 :+ clientId)
         case None             => mp + (subject -> Vector(clientId))
       }
-    } >> Stream.emit(s"subscribed to topic: ${subject.value}").through(text.utf8.encode).through(socket.writes).compile.drain
+    } >> responseStream(s"subscribed to topic: ${subject.value}").through(text.utf8.encode).through(socket.writes).compile.drain
 
   private def parseMessage(message: String): Either[Throwable, NatsMessage] =
     NatsParser.parseMessage(message) match {
@@ -103,20 +103,28 @@ object NatsServer extends IOApp {
       Console[F].println(s"Client $address disconnected")
 
   private def broadcastMessage[F[_]: Concurrent](
-    message: String,
     senderAddress: ClientId,
-    clientsRef: Ref[F, Map[ClientId, Socket[F]]]
+    clientsRef: Ref[F, Map[ClientId, Socket[F]]],
+    subject: Subject,
+    payload: Payload,
+    topicRef: Ref[F, Map[Subject, Vector[ClientId]]]
   ): F[Unit] =
     clientsRef.get.flatMap { clients =>
-      clients.toVector.traverse_ { case (address, client) =>
-        if (address != senderAddress) {
-          Stream.emit(message)
-            .through(text.utf8.encode)
-            .through(client.writes)
-            .compile.drain
-            .handleError(_ => ())
-        } else {
-          Concurrent[F].unit // Do nothing for the sender
+      topicRef.get.flatMap { topics =>
+        topics.get(subject) match {
+          case Some(subjectClients) =>
+            clients.toVector.traverse_ { case (address, client) =>
+              if (address != senderAddress && subjectClients.contains(address)) {
+                responseStream(s"topic: `${subject.value}`, received: ${payload.value}")
+                  .through(text.utf8.encode)
+                  .through(client.writes)
+                  .compile.drain
+                  .handleError(_ => ())
+              } else {
+                Concurrent[F].unit // Do nothing for the sender
+              }
+            }
+          case None => Concurrent[F].unit // Do nothing for the sender
         }
       }
     }

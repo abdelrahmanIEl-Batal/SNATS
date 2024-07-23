@@ -18,7 +18,6 @@ object NatsParser {
         case Right(command) => command match {
             case Command.Pub     => extractPubSubject(components = components, position = position + 1)
             case Command.Sub     => extractSubSubject(components = components, position = position + 1)
-            case Command.Connect => NatsMessage.ConnectMessage.asRight
             case Command.Ping    => NatsMessage.PingMessage.asRight
           }
       }
@@ -28,7 +27,6 @@ object NatsParser {
     command match {
       case CommandType.SUB     => Command.Sub.asRight
       case CommandType.PUB     => Command.Pub.asRight
-      case CommandType.CONNECT => Command.Connect.asRight
       case CommandType.PING    => Command.Ping.asRight
       case otherwise           => new IllegalArgumentException(s"invalid command encountered, value: $otherwise").asLeft
     }
