@@ -51,6 +51,6 @@ object NatsParser {
     } else new IllegalArgumentException("expected subject, found nothing").asLeft
 
   private def extractPayLoad(position: Int, components: Vector[String]): Either[Throwable, Payload] =
-    if (position < components.length) Payload(components(position)).asRight
+    if (position < components.length) Payload(components.slice(position, components.length).mkString(" ")).asRight
     else new IllegalArgumentException("expected payload, found nothing").asLeft
 }
